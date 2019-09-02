@@ -39,24 +39,27 @@ public class ParticleView extends View {
         init();
     }
 
+    public void setConfig(SizeRotAlphaSimulator.SizeRotAlphaConfig config) {
+        mConfig = config;
+    }
+
     private void init() {
-        mConfig = new SizeRotAlphaSimulator.SizeRotAlphaConfig();
-        mConfig.macParticleCount = 1000;
-        mConfig.duration = 10; // sec
-        mConfig.rate = 100; // count/sec
-        mConfig.life = new BaseSimulate.Var(5, 0); //sec
-        mConfig.size = new BaseSimulate.Range(new BaseSimulate.Var(10, 0), new BaseSimulate.Var(10, 0));
-        mConfig.R = new BaseSimulate.Range(new BaseSimulate.Var(1, 0), new BaseSimulate.Var(1, 0));
-        mConfig.G = new BaseSimulate.Range(new BaseSimulate.Var(0, 0), new BaseSimulate.Var(0, 0));
-        mConfig.B = new BaseSimulate.Range(new BaseSimulate.Var(0, 0), new BaseSimulate.Var(0, 0));
-        mConfig.A = new BaseSimulate.Range(new BaseSimulate.Var(1, 0), new BaseSimulate.Var(1, 0));
-        mConfig.speed = new BaseSimulate.Var(300, 0);
-        mConfig.angle = new BaseSimulate.Var(0, 90);
-        mConfig.x = new BaseSimulate.Var(500, 200);
-        mConfig.y = new BaseSimulate.Var(500, 200);
+        mPaint = new Paint();
+        mPaint.setStrokeWidth(2);
+        mRefreshAction = new Choreographer.FrameCallback() {
+            @Override
+            public void doFrame(long l) {
+                invalidate();
+                Choreographer.getInstance().postFrameCallback(mRefreshAction);
+            }
+        };
+    }
 
+    public void start() {
+        if (mConfig == null) {
+            throw new IllegalArgumentException("没有设置粒子属性配置");
+        }
         mSimulator = new SizeRotAlphaSimulator(mConfig);
-
         mSimulator.initialize();
         mSimulator.start();
 
@@ -65,17 +68,6 @@ public class ParticleView extends View {
             mBoxes[i] = new BaseSimulate.VisualController.Box();
         }
 
-        mPaint = new Paint();
-        mPaint.setStrokeWidth(2);
-
-        mRefreshAction = new Choreographer.FrameCallback() {
-            @Override
-            public void doFrame(long l) {
-                invalidate();
-                Choreographer.getInstance().postFrameCallback(mRefreshAction);
-            }
-        };
-
         Choreographer.getInstance().postFrameCallback(mRefreshAction);
         mLastFrameTime = SystemClock.currentThreadTimeMillis();
     }
@@ -83,6 +75,9 @@ public class ParticleView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+
+        if (mSimulator == null) return;
+
         long curMillis = SystemClock.currentThreadTimeMillis();
         float dt = (curMillis - mLastFrameTime) / 1000.0f;
         mLastFrameTime = curMillis;

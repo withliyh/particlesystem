@@ -15,10 +15,12 @@ public class SizeRotAlphaSimulator extends BaseSimulate {
     private Channel_f32 mMaxLife;
 
     private SizeRotAlphaConfig mSizeRotAlphaConfig;
+    private BatchSystem mBatchSystem;
 
     public SizeRotAlphaSimulator(SizeRotAlphaConfig config) {
         super(config);
         mSizeRotAlphaConfig = config;
+        mBatchSystem = new BatchSystem();
     }
 
     @Override
@@ -77,10 +79,26 @@ public class SizeRotAlphaSimulator extends BaseSimulate {
     }
 
     @Override
-    public void onSimulate(float dt) {
-        int n = mLifeController.mLifeCount;
-        mVisualController.mPositionChannel.integrate(n, mVelocity, dt);
-        mVisualController.mColorChannel.integrate(n, mColorDelta, dt);
+    public void onSimulate(final float dt) {
+        final int n = mLifeController.mLifeCount;
+
+        //使用3个线程执行计算任务，一个主线程，两个线程池中的线程
+        BatchSystem.Batch batch = mBatchSystem.newBatch();
+        batch.addTask(new BatchSystem.Task() {
+            @Override
+            public void onWork() {
+                mVisualController.mPositionChannel.integrate(n, mVelocity, dt);
+            }
+        });
+        batch.addTask(new BatchSystem.Task() {
+            @Override
+            public void onWork() {
+                mVisualController.mColorChannel.integrate(n, mColorDelta, dt);
+            }
+        });
+
+        batch.perform();
         mVisualController.mSizeChannel.integrate(n, mSizeDelta, dt);
+        batch.complete();
     }
 }

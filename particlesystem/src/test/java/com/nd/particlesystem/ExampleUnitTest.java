@@ -1,5 +1,7 @@
 package com.nd.particlesystem;
 
+import android.os.SystemClock;
+
 import com.nd.particlesystem.core.SizeRotAlphaSimulator;
 
 import org.junit.Test;
@@ -22,9 +24,9 @@ public class ExampleUnitTest {
     @Test
     public void sizeRotAlphaSimulatorTest() {
         SizeRotAlphaSimulator.SizeRotAlphaConfig config = new SizeRotAlphaSimulator.SizeRotAlphaConfig();
-        config.macParticleCount = 10000;
+        config.macParticleCount = 100000;
         config.duration = 10; // sec
-        config.rate = 1000; // count/sec
+        config.rate = 10000; // count/sec
         config.life = new Var(5, 3); //sec
         config.size = new Range(new Var(100, 10), new Var(10, 10));
         config.R = new Range(new Var(1, 0), new Var(1, 0));
@@ -33,7 +35,6 @@ public class ExampleUnitTest {
         config.A = new Range(new Var(1, 0), new Var(1, 0));
         config.speed = new Var(100, 100);
         config.angle = new Var(0, 90);
-        config.rotation = new Range(new Var(0, 0), new Var(0, 360));
         config.x = new Var(500, 0);
         config.y = new Var(500, 0);
 
@@ -42,7 +43,16 @@ public class ExampleUnitTest {
         simulator.initialize();
         simulator.start();
 
-        //sec
-        simulator.simulate(2);
+        long t[] = new long[11];
+        for (int i = 0; i < 11; i++) {
+            t[i] = System.currentTimeMillis();
+            simulator.simulate(1);
+        }
+
+        for (int i = 1; i < 11; i++) {
+            long d = t[i] - t[i-1];
+            System.out.println(d);
+        }
+
     }
 }

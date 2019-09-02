@@ -1,10 +1,7 @@
 package com.nd.particlesystem.core;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 
 public class Pool {
 
