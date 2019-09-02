@@ -1,16 +1,53 @@
-package com.nd.particlesystem;
+package com.nd.particlesystem.core;
+
 
 public abstract class BaseSimulate {
 
 
-    static class Var {
+    public static class Var {
         public float base;
         public float var;
+
+        public Var(float base, float var) {
+            this.base = base;
+            this.var = var;
+        }
+
+        public float random() {
+            if (var == 0) {
+                return base;
+            }
+            return base + var * (float) Math.random();
+        }
     }
 
-    static class Range {
+    public static class Range {
         public Var start;
         public Var end;
+
+        public Range(Var start, Var end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        public static class Delta {
+            public float begin;
+            public float delta;
+
+            public Delta(float begin, float delta) {
+                this.begin = begin;
+                this.delta = delta;
+            }
+        }
+
+        public Delta rangeInit(float invLife) {
+            float begin = start.random();
+            float d = 0;
+            if (start != end) {
+                d = (end.random() - begin) * invLife;
+            }
+            return new Delta(begin, d);
+        }
     }
 
     static class BaseConfig {
@@ -19,12 +56,16 @@ public abstract class BaseSimulate {
         public float rate;
         public Var life;
         public Var x, y;
-        public Range R,G,B,A;
+        public Range size;
+        public Range R, G, B, A;
     }
 
     public abstract void onAddField(Pool pool);
+
     public abstract void onInitField(Pool pool);
+
     public abstract void onEmitting(int n);
+
     public abstract void onSimulate(float dt);
 
     protected Pool mPool;
@@ -38,6 +79,7 @@ public abstract class BaseSimulate {
         mVisualController = new VisualController(mPool);
         mRateController = new RateController(config.duration, config.rate);
     }
+
     public void initialize() {
         onAddField(mPool);
         mPool.initialize();
@@ -57,7 +99,20 @@ public abstract class BaseSimulate {
         mLifeController.gc();
     }
 
-    class LifeController {
+    public int visualize(VisualController.Box[] boxes) {
+        mVisualController.visualize(boxes, mLifeController.mLifeCount);
+        return mLifeController.mLifeCount;
+    }
+
+    public void start() {
+        mRateController.start();
+    }
+
+    public void stop() {
+        mRateController.stop();
+    }
+
+    static class LifeController {
         protected Pool mPool;
         protected Channel_f32 mLifeChannel;
         protected int mLifeCount;
@@ -84,7 +139,7 @@ public abstract class BaseSimulate {
         }
 
         void sub(float dt) {
-            mLifeChannel.sub(mLifeCount ,dt);
+            mLifeChannel.sub(mLifeCount, dt);
         }
 
         int gc() {
@@ -105,7 +160,7 @@ public abstract class BaseSimulate {
         }
     }
 
-    class RateController {
+    static class RateController {
         private float mAccTime;
         private float mThreshTime;
 
@@ -113,7 +168,7 @@ public abstract class BaseSimulate {
         private float mDuration;
         private boolean mStop;
 
-        public RateController(float duration, float rate) {
+        public RateController(float duration, float rate/* count per sec */) {
             mAccTime = 0;
             mLifeTime = 0;
             mStop = false;
@@ -154,7 +209,43 @@ public abstract class BaseSimulate {
         }
     }
 
-    class VisualController {
+    public static class VisualController {
+
+        public static class Vertex {
+            public float x;
+            public float y;
+            public int rgba;
+
+            public Vertex() {
+            }
+
+            public Vertex(float x, float y, int rgba) {
+                this.x = x;
+                this.y = y;
+                this.rgba = rgba;
+            }
+
+            public void set(float x, float y, int rgba) {
+                this.x = x;
+                this.y = y;
+                this.rgba = rgba;
+            }
+        }
+
+        public static class Box {
+            public Vertex lb;
+            public Vertex rb;
+            public Vertex rt;
+            public Vertex lt;
+
+            public Box() {
+                this.lb = new Vertex();
+                this.rb = new Vertex();
+                this.rt = new Vertex();
+                this.lt = new Vertex();
+            }
+        }
+
         protected Pool mPool;
         protected Channel_v2 mPositionChannel;
         protected Channel_v4 mColorChannel;
@@ -181,8 +272,39 @@ public abstract class BaseSimulate {
             mRotationChannel = new Channel_f32(rotation);
         }
 
-        public void visualize() {
+        public static float clamp(float val, float min, float max) {
+            return Math.max(min, Math.min(max, val));
+        }
 
+        public void visualize(Box[] buf, int lifeCount) {
+            for (int i = 0; i < lifeCount; i++) {
+
+                Channel_v4.V4 color = mColorChannel.get(i);
+                float r = clamp(color.x, 0, 1);
+                float g = clamp(color.y, 0, 1);
+                float b = clamp(color.z, 0, 1);
+                float a = clamp(color.w, 0, 1);
+
+                boolean premul = false;
+                int rgba;
+                if (premul) {
+                    rgba = (int) (r * 255) << 16 + (int) (g * 255) << 8 + (int) (b * 255);
+                } else {
+                    rgba = (int) (r * 255) << 24 + (int) (g * 255) << 16 + (int) (b * 255) << 8 + (int) (a * 255);
+                }
+
+                Channel_v2.V2 pos = mPositionChannel.get(i);
+                float x = pos.x;
+                float y = pos.y;
+
+                float size = mSizeChannel.get(i);
+                float half = size / 2.0f;
+
+                buf[i].lb.set(x - half, y + half, rgba);
+                buf[i].rb.set(x + half, y + half, rgba);
+                buf[i].rt.set(x + half, y - half, rgba);
+                buf[i].lt.set(x - half, y - half, rgba);
+            }
         }
     }
 }

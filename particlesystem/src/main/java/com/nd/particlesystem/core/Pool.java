@@ -1,6 +1,7 @@
-package com.nd.particlesystem;
+package com.nd.particlesystem.core;
 
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -56,21 +57,21 @@ public class Pool {
 
     class Block {
         public ChanFiled chanFiled;
-        ByteBuffer data;
-        int stride;
-        int cap;
+        public FloatBuffer data;
+        public int stride; //以 float 长度为单位
+        public int cap; // 能容多少个 float 单位
     }
 
     private ArrayList<Block> mBlocks;
 
-    private ByteBuffer mByteBuffer;
+    private FloatBuffer mFloatBuffer;
 
     private int mCap;
-    private int mTotalByteCount;
+    private int mTotalFloatCount;
 
     public Pool(int cap) {
         mCap = cap;
-        mTotalByteCount = 0;
+        mTotalFloatCount = 0;
         mBlocks = new ArrayList<>(20);
     }
 
@@ -81,7 +82,7 @@ public class Pool {
         block.cap = mCap;
 
         mBlocks.add(block);
-        mTotalByteCount += (block.cap * block.stride);
+        mTotalFloatCount += (block.cap * block.stride);
     }
 
     public Block field(ChanFiled chanFiled) {
@@ -96,14 +97,14 @@ public class Pool {
     }
 
     public void initialize() {
-        mByteBuffer = ByteBuffer.allocate(mTotalByteCount);
-        byte[] internelArray = mByteBuffer.array();
+        mFloatBuffer = FloatBuffer.allocate(mTotalFloatCount);
+        float[] internelArray = mFloatBuffer.array();
         int offset = 0;
         int channelCount = mBlocks.size();
         for (int i = 0; i < channelCount; i++) {
             Block block = mBlocks.get(i);
             int length = block.cap * block.stride;
-            block.data = ByteBuffer.wrap(internelArray, offset, length);
+            block.data = FloatBuffer.wrap(internelArray, offset, length);
             offset += length;
         }
     }
@@ -117,21 +118,26 @@ public class Pool {
             Block block = mBlocks.get(i);
             int dstOffset = dst * block.stride;
             int srcOffset = src * block.stride;
-            byte[] memory = block.data.array();
+            float[] memory = block.data.array();
             System.arraycopy(memory, srcOffset, memory, dstOffset, block.stride);
         }
     }
 
+    /**
+     * 根据类型返回占用的 float 个数
+     * @param type 类型
+     * @return 需要的 float 个数
+     */
     private int getChanTypeSize(ChanType type) {
         switch (type) {
             case ChanF32:
-                return 4;
+                return 1;
             case ChanV2:
-                return 8;
+                return 2;
             case ChanV4:
-                return 16;
+                return 4;
             case ChanV8:
-                return 32;
+                return 8;
         }
 
         return 0;
